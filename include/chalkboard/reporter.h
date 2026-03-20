@@ -7,6 +7,7 @@
 
 #include <chalkboard/latex_serializable.h>
 #include <chalkboard/report_object.h>
+#include <chalkboard/latex_formatter.h>
 
 namespace chalkboard {
   class Reporter {
