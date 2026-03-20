@@ -5,8 +5,8 @@
 
 #include <chalkboard/latex_serializable.h>
 
-namespace chalkboard {
-  template <LatexSerializable T>
+
+  template <chalkboard::LatexSerializable T>
   struct std::formatter<T> {
     constexpr auto parse(auto& ctx) { return ctx.begin(); }
 
@@ -14,4 +14,3 @@ namespace chalkboard {
       return std::format_to(ctx.out(), "\\({}\\)", obj.to_latex());
     }
   };
-}
