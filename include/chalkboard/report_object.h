@@ -2,8 +2,10 @@
 
 #include <string>
 
-class IReportObject {
-public:
-  virtual std::string to_html() const = 0;
-  virtual ~IReportObject() = default;
-};
+namespace chalkboard {
+  class IReportObject {
+  public:
+    [[nodiscard]] virtual std::string to_html() const = 0;
+    virtual ~IReportObject() = default;
+  };
+}

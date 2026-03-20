@@ -2,13 +2,15 @@
 
 #include <string>
 
-class Publisher {
-public:
-  explicit Publisher(std::string host, int port);
+namespace chalkboard {
+  class Publisher {
+  public:
+    explicit Publisher(std::string host, int port);
 
-  void publish(const std::string& artifact_dir) const;
+    void publish(const std::string& artifact_dir) const;
 
-private:
-  std::string m_host;
-  int m_port;
-};
+  private:
+    std::string m_host;
+    int m_port;
+  };
+}

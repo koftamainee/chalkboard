@@ -8,8 +8,9 @@
 #include <chalkboard/latex_serializable.h>
 #include <chalkboard/report_object.h>
 
-class Reporter {
-public:
+namespace chalkboard {
+  class Reporter {
+  public:
     explicit Reporter(std::string title);
 
     static std::string math(const std::string& s);
@@ -56,51 +57,52 @@ public:
 
     template <typename... Args>
     Reporter& text(std::format_string<Args...> fmt, Args&&... args) {
-        return text(std::format(fmt, std::forward<Args>(args)...));
+      return text(std::format(fmt, std::forward<Args>(args)...));
     }
 
     Reporter& raw_latex(const std::string& latex);
+
     Reporter& math_block(const LatexSerializable auto& obj) {
-        return raw_latex(obj.to_latex());
+      return raw_latex(obj.to_latex());
     }
 
     Reporter& add(const IReportObject& obj);
 
-    std::string build() const;
+    [[nodiscard]] std::string build() const;
 
-private:
+  private:
     struct HeadingBlock : IReportObject {
-        int m_level;
-        std::string m_text;
+      int m_level;
+      std::string m_text;
 
-        HeadingBlock(int level, std::string text);
-        std::string to_html() const override;
+      HeadingBlock(int level, std::string text);
+      [[nodiscard]] std::string to_html() const override;
     };
 
     struct TextBlock : IReportObject {
-        std::string m_content;
+      std::string m_content;
 
-        explicit TextBlock(std::string content);
-        std::string to_html() const override;
+      explicit TextBlock(std::string content);
+      [[nodiscard]] std::string to_html() const override;
     };
 
     struct MathBlock : IReportObject {
-        std::string m_latex;
+      std::string m_latex;
 
-        explicit MathBlock(std::string latex);
-        std::string to_html() const override;
+      explicit MathBlock(std::string latex);
+      [[nodiscard]] std::string to_html() const override;
     };
 
     struct RawBlock : IReportObject {
-        std::string m_html;
+      std::string m_html;
 
-        explicit RawBlock(std::string html);
-        std::string to_html() const override;
+      explicit RawBlock(std::string html);
+      [[nodiscard]] std::string to_html() const override;
     };
 
     void push(std::unique_ptr<IReportObject> block);
-    std::string make_artifact_dir() const;
-    std::string render_shell() const;
+    [[nodiscard]] std::string make_artifact_dir() const;
+    [[nodiscard]] std::string render_shell() const;
 
     static std::string escape_html(const std::string& s);
     static std::string sanitize_title(const std::string& title);
@@ -108,4 +110,5 @@ private:
 
     std::string m_title;
     std::vector<std::unique_ptr<IReportObject>> m_blocks;
-};
+  };
+}
