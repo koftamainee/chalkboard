@@ -43,7 +43,7 @@ add_library(chalkboard::chalkboard ALIAS chalkboard)
 
 if(CHALKBOARD_BUILD_VIEWER)
     add_executable(chalkboard_viewer
-            src/viewer.cpp
+            viewer/viewer.cpp
     )
 
     target_link_libraries(chalkboard_viewer
