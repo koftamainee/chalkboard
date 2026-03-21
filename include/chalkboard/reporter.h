@@ -64,7 +64,7 @@ namespace chalkboard {
     Reporter& raw_latex(const std::string& latex);
 
     Reporter& math_block(const LatexSerializable auto& obj) {
-      return raw_latex(obj.to_latex());
+      return raw_latex(to_latex(obj));
     }
 
     Reporter& add(const IReportObject& obj);

@@ -11,6 +11,6 @@ struct std::formatter<T> {
   constexpr auto parse(auto& ctx) { return ctx.begin(); }
 
   auto format(const T& obj, auto& ctx) const {
-    return std::format_to(ctx.out(), "\\({}\\)", obj.to_latex());
+    return std::format_to(ctx.out(), "\\({}\\)", to_latex(obj));
   }
 };
