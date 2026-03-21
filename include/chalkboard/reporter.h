@@ -7,7 +7,6 @@
 
 #include <chalkboard/latex_serializable.h>
 #include <chalkboard/report_object.h>
-#include <chalkboard/latex_formatter.h>
 
 namespace chalkboard {
   class Reporter {
@@ -58,7 +57,7 @@ namespace chalkboard {
 
     template <typename... Args>
     Reporter& text(std::format_string<Args...> fmt, Args&&... args) {
-      return text(std::format(fmt, std::forward<Args>(args)...));
+      return text(std::format(fmt, maybe_latex(std::forward<Args>(args))...));
     }
 
     Reporter& raw_latex(const std::string& latex);

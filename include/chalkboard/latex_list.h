@@ -17,7 +17,9 @@
 
       template <typename... Args>
       LatexList& item(std::format_string<Args...> fmt, Args&&... args) {
-        m_items.push_back(std::format(fmt, std::forward<Args>(args)...));
+        m_items.push_back(
+          std::format(fmt, maybe_latex(std::forward<Args>(args))...)
+        );
         return *this;
       }
 
