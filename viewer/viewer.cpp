@@ -195,14 +195,6 @@ static std::string shell_html() {
     color: var(--muted);
   }
 
-  @media print {
-      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      #statusbar, #search-bar { display: none !important; }
-      #content { padding-top: 20px !important; max-width: 100%; }
-      .copy-latex-btn { display: none !important; }
-      @page { margin: 20mm; }
-    }
-
   #statusbar .dot {
     width: 7px; height: 7px;
     border-radius: 50%;
