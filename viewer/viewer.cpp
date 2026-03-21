@@ -871,7 +871,7 @@ int main(const int argc, char *argv[]) {
     res.set_content(file_content, "application/octet-stream");
   });
 
-  std::cout << "[" << timestamp() << "] listening — open http://localhost:" << k_input_port << "\n";
+  std::cout << "[" << timestamp() << "] listening — open http://localhost:" << k_port << "\n";
   svr.listen("0.0.0.0", k_port);
   return 0;
 }
