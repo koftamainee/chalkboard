@@ -47,16 +47,16 @@ if (CHALKBOARD_BUILD_VIEWER)
 endif ()
 
 if (CHALKBOARD_BUILD_EXAMPLES)
-    add_executable(example_pythagorean examples/task1_pythagorean.cpp)
-    add_executable(example_euler examples/task2_euler.cpp)
-    add_executable(example_quadratic examples/task3_quadratic.cpp)
-
-    foreach (target IN ITEMS example_pythagorean example_euler example_quadratic)
-        target_link_libraries(${target} PRIVATE chalkboard::chalkboard)
-        target_compile_features(${target} PRIVATE cxx_std_20)
-        target_precompile_headers(${target} PRIVATE
-                ${CMAKE_CURRENT_SOURCE_DIR}/examples/common.h
-        )
+    foreach (name IN ITEMS task1_pythagorean task2_euler task3_quadratic)
+        set(src ${CMAKE_CURRENT_SOURCE_DIR}/examples/${name}.cpp)
+        if (EXISTS ${src})
+            add_executable(example_${name} ${src})
+            target_link_libraries(example_${name} PRIVATE chalkboard::chalkboard)
+            target_compile_features(example_${name} PRIVATE cxx_std_20)
+            target_precompile_headers(example_${name} PRIVATE
+                    ${CMAKE_CURRENT_SOURCE_DIR}/examples/common.h
+            )
+        endif ()
     endforeach ()
 endif ()
 
