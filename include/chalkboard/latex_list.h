@@ -16,13 +16,8 @@
       static LatexList enumerate();
 
       template <typename... Args>
-     LatexList& item(const std::string_view fmt, Args&&... args) {
-        m_items.push_back(
-          std::vformat(
-            fmt,
-            std::make_format_args(maybe_latex(std::forward<Args>(args))...)
-          )
-        );
+      LatexList& item(std::format_string<Args...> fmt, Args&&... args) {
+        m_items.push_back(std::format(fmt, std::forward<Args>(args)...));
         return *this;
       }
 
