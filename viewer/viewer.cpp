@@ -17,126 +17,127 @@
 
 namespace fs = std::filesystem;
 
-static constexpr int    k_port         = 8080;
+static constexpr int k_output_port = 80;
+static constexpr int k_input_port = 8080;
 static constexpr size_t k_history_size = 16;
 
-static std::mutex                    g_mutex;
-static std::vector<std::string>      g_history;
-static size_t                        g_history_index = 0;
+static std::mutex g_mutex;
+static std::vector<std::string> g_history;
+static size_t g_history_index = 0;
 static std::vector<httplib::DataSink*> g_sinks;
-static std::atomic<bool>             g_running{true};
+static std::atomic<bool> g_running{true};
 
 static std::string timestamp() {
-    const auto now  = std::chrono::system_clock::now();
-    const auto time = std::chrono::system_clock::to_time_t(now);
-    std::ostringstream ss;
-    ss << std::put_time(std::localtime(&time), "%H:%M:%S");
-    return ss.str();
+  const auto now = std::chrono::system_clock::now();
+  const auto time = std::chrono::system_clock::to_time_t(now);
+  std::ostringstream ss;
+  ss << std::put_time(std::localtime(&time), "%H:%M:%S");
+  return ss.str();
 }
 
 static void log(const std::string& method, const std::string& path, const int status = 0) {
-    std::cout << "[" << timestamp() << "] " << method;
-    if (!path.empty()) {
-        std::cout << " " << path;
-    }
-    if (status != 0) {
-        std::cout << " -> " << status;
-    }
-    std::cout << "\n";
+  std::cout << "[" << timestamp() << "] " << method;
+  if (!path.empty()) {
+    std::cout << " " << path;
+  }
+  if (status != 0) {
+    std::cout << " -> " << status;
+  }
+  std::cout << "\n";
 }
 
 static void cleanup_current() {
-    if (!g_history.empty() && fs::exists(g_history[g_history_index])) {
-        fs::remove_all(g_history[g_history_index]);
-    }
+  if (!g_history.empty() && fs::exists(g_history[g_history_index])) {
+    fs::remove_all(g_history[g_history_index]);
+  }
 }
 
 static void signal_handler(int) {
-    g_running = false;
-    std::lock_guard lock(g_mutex);
-    cleanup_current();
-    std::cout << "\n[" << timestamp() << "] shutting down\n";
-    std::exit(0);
+  g_running = false;
+  std::lock_guard lock(g_mutex);
+  cleanup_current();
+  std::cout << "\n[" << timestamp() << "] shutting down\n";
+  std::exit(0);
 }
 
 static std::string read_file(const std::string& path) {
-    std::ifstream f(path);
-    if (!f.is_open()) {
-        return "";
-    }
-    std::ostringstream ss;
-    ss << f.rdbuf();
-    return ss.str();
+  std::ifstream f(path);
+  if (!f.is_open()) {
+    return "";
+  }
+  std::ostringstream ss;
+  ss << f.rdbuf();
+  return ss.str();
 }
 
 static std::string extract_body(const std::string& html) {
-    auto start = html.find("<body");
-    if (start == std::string::npos) {
-        return html;
-    }
-    start = html.find('>', start);
-    if (start == std::string::npos) {
-        return html;
-    }
-    ++start;
-    const auto end = html.rfind("</body>");
-    if (end == std::string::npos) {
-        return html.substr(start);
-    }
-    return html.substr(start, end - start);
+  auto start = html.find("<body");
+  if (start == std::string::npos) {
+    return html;
+  }
+  start = html.find('>', start);
+  if (start == std::string::npos) {
+    return html;
+  }
+  ++start;
+  const auto end = html.rfind("</body>");
+  if (end == std::string::npos) {
+    return html.substr(start);
+  }
+  return html.substr(start, end - start);
 }
 
 static std::string json_escape(const std::string& s) {
-    std::string r;
-    r.reserve(s.size());
-    for (const char c : s) {
-        if (c == '"')       { r += "\\\""; }
-        else if (c == '\\') { r += "\\\\"; }
-        else if (c == '\n') { r += "\\n";  }
-        else if (c == '\r') { r += "\\r";  }
-        else                { r += c;      }
-    }
-    return r;
+  std::string r;
+  r.reserve(s.size());
+  for (const char c : s) {
+    if (c == '"') { r += "\\\""; }
+    else if (c == '\\') { r += "\\\\"; }
+    else if (c == '\n') { r += "\\n"; }
+    else if (c == '\r') { r += "\\r"; }
+    else { r += c; }
+  }
+  return r;
 }
 
 static void notify_clients(const std::string& event) {
-    const std::string msg = "data: " + event + "\n\n";
-    std::lock_guard lock(g_mutex);
-    for (const auto* sink : g_sinks) {
-        (void)sink->write(msg.c_str(), msg.size());
-    }
+  const std::string msg = "data: " + event + "\n\n";
+  std::lock_guard lock(g_mutex);
+  for (const auto* sink : g_sinks) {
+    (void)sink->write(msg.c_str(), msg.size());
+  }
 }
 
 static std::string build_artifact_json(const size_t index) {
-    std::lock_guard lock(g_mutex);
-    if (g_history.empty()) {
-        return "";
-    }
-    const std::string& dir        = g_history[index];
-    const std::string        index_path = dir + "/index.html";
-    const std::string        html       = read_file(index_path);
-    if (html.empty()) {
-        return "";
-    }
-    const std::string body        = extract_body(html);
-    const std::string name        = fs::path(dir).filename().string();
-    const bool        has_prev    = index > 0;
-    const bool        has_next    = index + 1 < g_history.size();
+  std::lock_guard lock(g_mutex);
+  if (g_history.empty()) {
+    return "";
+  }
+  const std::string& dir = g_history[index];
+  const std::string index_path = dir + "/index.html";
+  const std::string html = read_file(index_path);
+  if (html.empty()) {
+    return "";
+  }
+  const std::string body = extract_body(html);
+  const std::string name = fs::path(dir).filename().string();
+  const bool has_prev = index > 0;
+  const bool has_next = index + 1 < g_history.size();
 
-    std::ostringstream json;
-    json << "{"
-         << "\"body\":\""    << json_escape(body) << "\","
-         << "\"name\":\""    << json_escape(name) << "\","
-         << "\"index\":"     << index             << ","
-         << "\"total\":"     << g_history.size()  << ","
-         << "\"has_prev\":"  << (has_prev ? "true" : "false") << ","
-         << "\"has_next\":"  << (has_next ? "true" : "false")
-         << "}";
-    return json.str();
+  std::ostringstream json;
+  json << "{"
+    << "\"body\":\"" << json_escape(body) << "\","
+    << "\"name\":\"" << json_escape(name) << "\","
+    << "\"index\":" << index << ","
+    << "\"total\":" << g_history.size() << ","
+    << "\"has_prev\":" << (has_prev ? "true" : "false") << ","
+    << "\"has_next\":" << (has_next ? "true" : "false")
+    << "}";
+  return json.str();
 }
 
 static std::string shell_html() {
-    return R"(<!DOCTYPE html>
+  return R"(<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -754,119 +755,120 @@ static std::string shell_html() {
 }
 
 int main() {
-    std::signal(SIGINT,  signal_handler);
-    std::signal(SIGTERM, signal_handler);
+  std::signal(SIGINT, signal_handler);
+  std::signal(SIGTERM, signal_handler);
 
-    httplib::Server svr;
+  httplib::Server svr;
 
-    std::cout << "[" << timestamp() << "] viewer starting on http://0.0.0.0:" << k_port << "\n";
+  std::cout << "[" << timestamp() << "] viewer starting on http://0.0.0.0:" << k_output_port << "\n";
 
-    svr.Get("/", [](const httplib::Request&, httplib::Response& res) {
-        log("GET", "/", 200);
-        res.set_content(shell_html(), "text/html");
-    });
+  svr.Get("/", [](const httplib::Request&, httplib::Response& res) {
+    log("GET", "/", 200);
+    res.set_content(shell_html(), "text/html");
+  });
 
-    svr.Get("/artifact", [](const httplib::Request& req, httplib::Response& res) {
-        size_t index = 0;
-        {
-            std::lock_guard lock(g_mutex);
-            if (g_history.empty()) {
-                log("GET", "/artifact", 204);
-                res.status = 204;
-                return;
-            }
-            if (req.has_param("index")) {
-                const size_t requested = std::stoul(req.get_param_value("index"));
-                if (requested >= g_history.size()) {
-                    log("GET", "/artifact?index=" + req.get_param_value("index"), 404);
-                    res.status = 404;
-                    return;
-                }
-                index = requested;
-            } else {
-                index = g_history_index;
-            }
+  svr.Get("/artifact", [](const httplib::Request& req, httplib::Response& res) {
+    size_t index = 0;
+    {
+      std::lock_guard lock(g_mutex);
+      if (g_history.empty()) {
+        log("GET", "/artifact", 204);
+        res.status = 204;
+        return;
+      }
+      if (req.has_param("index")) {
+        const size_t requested = std::stoul(req.get_param_value("index"));
+        if (requested >= g_history.size()) {
+          log("GET", "/artifact?index=" + req.get_param_value("index"), 404);
+          res.status = 404;
+          return;
         }
+        index = requested;
+      }
+      else {
+        index = g_history_index;
+      }
+    }
 
-        const std::string json = build_artifact_json(index);
-        if (json.empty()) {
-            log("GET", "/artifact", 404);
-            res.status = 404;
-            res.set_content("index.html not found", "text/plain");
-            return;
+    const std::string json = build_artifact_json(index);
+    if (json.empty()) {
+      log("GET", "/artifact", 404);
+      res.status = 404;
+      res.set_content("index.html not found", "text/plain");
+      return;
+    }
+
+    log("GET", "/artifact", 200);
+    res.set_content(json, "application/json");
+  });
+
+  svr.Get("/events", [](const httplib::Request&, httplib::Response& res) {
+    log("GET", "/events (SSE client connected)", 200);
+    res.set_chunked_content_provider("text/event-stream",
+                                     [](size_t, httplib::DataSink& sink) {
+                                       {
+                                         std::lock_guard lock(g_mutex);
+                                         g_sinks.push_back(&sink);
+                                       }
+                                       (void)sink.write("data: connected\n\n", 18);
+                                       while (g_running && sink.is_writable()) {
+                                         std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                                       }
+                                       {
+                                         std::lock_guard lock(g_mutex);
+                                         std::erase(g_sinks, &sink);
+                                       }
+                                       std::cout << "[" << timestamp() << "] SSE client disconnected\n";
+                                       return false;
+                                     }
+    );
+  });
+
+  svr.Post("/publish", [](const httplib::Request& req, httplib::Response& res) {
+    const std::string new_dir = req.body;
+    if (!fs::exists(new_dir)) {
+      log("POST", "/publish -> not found: " + new_dir, 400);
+      res.status = 400;
+      res.set_content("artifact directory not found", "text/plain");
+      return;
+    }
+    {
+      std::lock_guard lock(g_mutex);
+      if (g_history.size() >= k_history_size) {
+        if (fs::exists(g_history.front())) {
+          fs::remove_all(g_history.front());
         }
+        g_history.erase(g_history.begin());
+      }
+      g_history.push_back(new_dir);
+      g_history_index = g_history.size() - 1;
+    }
+    log("POST", "/publish -> " + new_dir, 200);
+    notify_clients("reload");
+    res.set_content("ok", "text/plain");
+  });
 
-        log("GET", "/artifact", 200);
-        res.set_content(json, "application/json");
-    });
+  svr.Get("/assets/(.*)", [](const httplib::Request& req, httplib::Response& res) {
+    std::string asset_path;
+    {
+      std::lock_guard lock(g_mutex);
+      if (g_history.empty()) {
+        res.status = 404;
+        return;
+      }
+      asset_path = g_history[g_history_index] + "/assets/" + req.matches[1].str();
+    }
+    const std::string file_content = read_file(asset_path);
+    if (file_content.empty()) {
+      log("GET", "/assets/" + req.matches[1].str(), 404);
+      res.status = 404;
+      return;
+    }
+    log("GET", "/assets/" + req.matches[1].str(), 200);
+    res.set_content(file_content, "application/octet-stream");
+  });
 
-    svr.Get("/events", [](const httplib::Request&, httplib::Response& res) {
-        log("GET", "/events (SSE client connected)", 200);
-        res.set_chunked_content_provider("text/event-stream",
-            [](size_t, httplib::DataSink& sink) {
-                {
-                    std::lock_guard lock(g_mutex);
-                    g_sinks.push_back(&sink);
-                }
-                (void)sink.write("data: connected\n\n", 18);
-                while (g_running && sink.is_writable()) {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                }
-                {
-                    std::lock_guard lock(g_mutex);
-                    std::erase(g_sinks, &sink);
-                }
-                std::cout << "[" << timestamp() << "] SSE client disconnected\n";
-                return false;
-            }
-        );
-    });
-
-    svr.Post("/publish", [](const httplib::Request& req, httplib::Response& res) {
-        const std::string new_dir = req.body;
-        if (!fs::exists(new_dir)) {
-            log("POST", "/publish -> not found: " + new_dir, 400);
-            res.status = 400;
-            res.set_content("artifact directory not found", "text/plain");
-            return;
-        }
-        {
-            std::lock_guard lock(g_mutex);
-            if (g_history.size() >= k_history_size) {
-                if (fs::exists(g_history.front())) {
-                    fs::remove_all(g_history.front());
-                }
-                g_history.erase(g_history.begin());
-            }
-            g_history.push_back(new_dir);
-            g_history_index = g_history.size() - 1;
-        }
-        log("POST", "/publish -> " + new_dir, 200);
-        notify_clients("reload");
-        res.set_content("ok", "text/plain");
-    });
-
-    svr.Get("/assets/(.*)", [](const httplib::Request& req, httplib::Response& res) {
-        std::string asset_path;
-        {
-            std::lock_guard lock(g_mutex);
-            if (g_history.empty()) {
-                res.status = 404;
-                return;
-            }
-            asset_path = g_history[g_history_index] + "/assets/" + req.matches[1].str();
-        }
-        const std::string file_content = read_file(asset_path);
-        if (file_content.empty()) {
-            log("GET", "/assets/" + req.matches[1].str(), 404);
-            res.status = 404;
-            return;
-        }
-        log("GET", "/assets/" + req.matches[1].str(), 200);
-        res.set_content(file_content, "application/octet-stream");
-    });
-
-    std::cout << "[" << timestamp() << "] listening — open http://localhost:" << k_port << "\n";
-    svr.listen("0.0.0.0", k_port);
-    return 0;
+  std::cout << "[" << timestamp() << "] listening — open http://localhost:" << k_input_port << "\n";
+  svr.listen("0.0.0.0", k_input_port);
+  return 0;
 }
