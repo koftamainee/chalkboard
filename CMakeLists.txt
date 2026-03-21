@@ -24,6 +24,7 @@ add_library(chalkboard STATIC
         src/reporter.cpp
         src/publisher.cpp
         src/task.cpp
+        src/latex_table.cpp
 )
 
 target_include_directories(chalkboard

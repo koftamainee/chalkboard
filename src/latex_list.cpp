@@ -1,7 +1,7 @@
 #include <chalkboard/latex_list.h>
 
 namespace chalkboard {
-  LatexList LatexList::itemize() { return LatexList(Kind::Itemize); }
+  LatexList LatexList::itemize()  { return LatexList(Kind::Itemize);   }
   LatexList LatexList::enumerate() { return LatexList(Kind::Enumerate); }
 
   LatexList::LatexList(const Kind kind) : m_kind(kind) {}
