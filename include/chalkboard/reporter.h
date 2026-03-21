@@ -56,8 +56,11 @@ namespace chalkboard {
     Reporter& text(const std::string& paragraph);
 
     template <typename... Args>
-    Reporter& text(std::format_string<Args...> fmt, Args&&... args) {
-      return text(std::format(fmt, maybe_latex(std::forward<Args>(args))...));
+    Reporter& text(const std::string_view fmt, Args&&... args) {
+      return text(std::vformat(
+        fmt,
+        std::make_format_args(maybe_latex(std::forward<Args>(args))...)
+      ));
     }
 
     Reporter& raw_latex(const std::string& latex);
