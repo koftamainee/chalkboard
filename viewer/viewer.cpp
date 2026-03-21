@@ -17,8 +17,6 @@
 
 namespace fs = std::filesystem;
 
-static constexpr int k_output_port = 80;
-static constexpr int k_input_port = 8080;
 static constexpr size_t k_history_size = 16;
 
 static std::mutex g_mutex;
@@ -754,13 +752,20 @@ static std::string shell_html() {
 )";
 }
 
-int main() {
+int main(const int argc, char *argv[]) {
+  if (argc != 2) {
+    std::cerr << "Specify port in cli arguments.\n";
+    return 1;
+  }
+  static int k_port = 8080;
+  std::from_chars(argv[1], argv[1] + std::strlen(argv[1]), k_port);
+
   std::signal(SIGINT, signal_handler);
   std::signal(SIGTERM, signal_handler);
 
   httplib::Server svr;
 
-  std::cout << "[" << timestamp() << "] viewer starting on http://0.0.0.0:" << k_output_port << "\n";
+  std::cout << "[" << timestamp() << "] viewer starting on http://0.0.0.0:" << k_port << "\n";
 
   svr.Get("/", [](const httplib::Request&, httplib::Response& res) {
     log("GET", "/", 200);
@@ -869,6 +874,6 @@ int main() {
   });
 
   std::cout << "[" << timestamp() << "] listening — open http://localhost:" << k_input_port << "\n";
-  svr.listen("0.0.0.0", k_input_port);
+  svr.listen("0.0.0.0", k_port);
   return 0;
 }
