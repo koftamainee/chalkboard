@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 project(chalkboard VERSION 1.0.0 LANGUAGES CXX)
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -32,7 +32,7 @@ target_link_libraries(chalkboard
         PUBLIC
         httplib::httplib
 )
-target_compile_features(chalkboard PUBLIC cxx_std_23)
+target_compile_features(chalkboard PUBLIC cxx_std_20)
 add_library(chalkboard::chalkboard ALIAS chalkboard)
 
 if (CHALKBOARD_BUILD_VIEWER)
@@ -43,7 +43,7 @@ if (CHALKBOARD_BUILD_VIEWER)
             PRIVATE
             httplib::httplib
     )
-    target_compile_features(chalkboard_viewer PRIVATE cxx_std_23)
+    target_compile_features(chalkboard_viewer PRIVATE cxx_std_20)
 endif ()
 
 if (CHALKBOARD_BUILD_EXAMPLES)
@@ -53,7 +53,10 @@ if (CHALKBOARD_BUILD_EXAMPLES)
 
     foreach (target IN ITEMS example_pythagorean example_euler example_quadratic)
         target_link_libraries(${target} PRIVATE chalkboard::chalkboard)
-        target_compile_features(${target} PRIVATE cxx_std_23)
+        target_compile_features(${target} PRIVATE cxx_std_20)
+        target_precompile_headers(${target} PRIVATE
+                ${CMAKE_CURRENT_SOURCE_DIR}/examples/common.h
+        )
     endforeach ()
 endif ()
 
