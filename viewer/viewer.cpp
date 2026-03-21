@@ -27,14 +27,14 @@ static std::vector<httplib::DataSink*> g_sinks;
 static std::atomic<bool>             g_running{true};
 
 static std::string timestamp() {
-    auto now  = std::chrono::system_clock::now();
-    auto time = std::chrono::system_clock::to_time_t(now);
+    const auto now  = std::chrono::system_clock::now();
+    const auto time = std::chrono::system_clock::to_time_t(now);
     std::ostringstream ss;
     ss << std::put_time(std::localtime(&time), "%H:%M:%S");
     return ss.str();
 }
 
-static void log(const std::string& method, const std::string& path, int status = 0) {
+static void log(const std::string& method, const std::string& path, const int status = 0) {
     std::cout << "[" << timestamp() << "] " << method;
     if (!path.empty()) {
         std::cout << " " << path;
@@ -79,7 +79,7 @@ static std::string extract_body(const std::string& html) {
         return html;
     }
     ++start;
-    auto end = html.rfind("</body>");
+    const auto end = html.rfind("</body>");
     if (end == std::string::npos) {
         return html.substr(start);
     }
@@ -89,7 +89,7 @@ static std::string extract_body(const std::string& html) {
 static std::string json_escape(const std::string& s) {
     std::string r;
     r.reserve(s.size());
-    for (char c : s) {
+    for (const char c : s) {
         if (c == '"')       { r += "\\\""; }
         else if (c == '\\') { r += "\\\\"; }
         else if (c == '\n') { r += "\\n";  }
@@ -100,28 +100,28 @@ static std::string json_escape(const std::string& s) {
 }
 
 static void notify_clients(const std::string& event) {
-    std::string msg = "data: " + event + "\n\n";
+    const std::string msg = "data: " + event + "\n\n";
     std::lock_guard lock(g_mutex);
-    for (auto* sink : g_sinks) {
+    for (const auto* sink : g_sinks) {
         (void)sink->write(msg.c_str(), msg.size());
     }
 }
 
-static std::string build_artifact_json(size_t index) {
+static std::string build_artifact_json(const size_t index) {
     std::lock_guard lock(g_mutex);
     if (g_history.empty()) {
         return "";
     }
     const std::string& dir        = g_history[index];
-    std::string        index_path = dir + "/index.html";
-    std::string        html       = read_file(index_path);
+    const std::string        index_path = dir + "/index.html";
+    const std::string        html       = read_file(index_path);
     if (html.empty()) {
         return "";
     }
-    std::string body        = extract_body(html);
-    std::string name        = fs::path(dir).filename().string();
-    bool        has_prev    = index > 0;
-    bool        has_next    = index + 1 < g_history.size();
+    const std::string body        = extract_body(html);
+    const std::string name        = fs::path(dir).filename().string();
+    const bool        has_prev    = index > 0;
+    const bool        has_next    = index + 1 < g_history.size();
 
     std::ostringstream json;
     json << "{"
@@ -492,7 +492,7 @@ static std::string shell_html() {
   <button class="nav-btn" id="btn-prev" disabled>&#8592; prev</button>
   <span id="history-counter">—</span>
   <button class="nav-btn" id="btn-next" disabled>next &#8594;</button>
-  <button class="nav-btn" id="btn-search" title="Search (Ctrl+F)\">&#128269;</button>
+  <button class="nav-btn" id="btn-search" title=\"Search (Ctrl+F)\">&#128269;</button>
   <span class="artifact-name" id="artifact-name"></span>
 </div>
 
@@ -591,8 +591,9 @@ static std::string shell_html() {
       clear_error();
       content.innerHTML = '<div id="error-banner"></div>' + data.body;
       content.className = 'fade-in';
-      artifactName.textContent = data.name;
-      document.title    = data.name;
+      const formatted_name = data.name.replace(/^report_/, '').replaceAll('_', ' ');
+      artifactName.textContent = formatted_name;
+      document.title    = formatted_name;
       update_nav(data);
       attach_copy_buttons();
       if (window.MathJax) {
@@ -775,7 +776,7 @@ int main() {
                 return;
             }
             if (req.has_param("index")) {
-                size_t requested = std::stoul(req.get_param_value("index"));
+                const size_t requested = std::stoul(req.get_param_value("index"));
                 if (requested >= g_history.size()) {
                     log("GET", "/artifact?index=" + req.get_param_value("index"), 404);
                     res.status = 404;
@@ -787,7 +788,7 @@ int main() {
             }
         }
 
-        std::string json = build_artifact_json(index);
+        const std::string json = build_artifact_json(index);
         if (json.empty()) {
             log("GET", "/artifact", 404);
             res.status = 404;
@@ -807,16 +808,13 @@ int main() {
                     std::lock_guard lock(g_mutex);
                     g_sinks.push_back(&sink);
                 }
-                sink.write("data: connected\n\n", 18);
+                (void)sink.write("data: connected\n\n", 18);
                 while (g_running && sink.is_writable()) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 }
                 {
                     std::lock_guard lock(g_mutex);
-                    g_sinks.erase(
-                        std::remove(g_sinks.begin(), g_sinks.end(), &sink),
-                        g_sinks.end()
-                    );
+                    std::erase(g_sinks, &sink);
                 }
                 std::cout << "[" << timestamp() << "] SSE client disconnected\n";
                 return false;
@@ -825,7 +823,7 @@ int main() {
     });
 
     svr.Post("/publish", [](const httplib::Request& req, httplib::Response& res) {
-        std::string new_dir = req.body;
+        const std::string new_dir = req.body;
         if (!fs::exists(new_dir)) {
             log("POST", "/publish -> not found: " + new_dir, 400);
             res.status = 400;
@@ -858,7 +856,7 @@ int main() {
             }
             asset_path = g_history[g_history_index] + "/assets/" + req.matches[1].str();
         }
-        std::string file_content = read_file(asset_path);
+        const std::string file_content = read_file(asset_path);
         if (file_content.empty()) {
             log("GET", "/assets/" + req.matches[1].str(), 404);
             res.status = 404;
