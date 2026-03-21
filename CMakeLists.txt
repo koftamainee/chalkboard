@@ -1,21 +1,19 @@
 cmake_minimum_required(VERSION 3.20)
 project(chalkboard VERSION 1.0.0 LANGUAGES CXX)
-
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(CHALKBOARD_BUILD_VIEWER "Build the chalkboard viewer executable" OFF)
+option(CHALKBOARD_BUILD_EXAMPLES "Build the chalkboard examples" OFF)
 
 include(FetchContent)
-
 set(HTTPLIB_REQUIRE_OPENSSL OFF)
 set(HTTPLIB_USE_OPENSSL_IF_AVAILABLE OFF)
-
 FetchContent_Declare(
         httplib
         GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
-        GIT_TAG        master
+        GIT_TAG master
 )
 FetchContent_MakeAvailable(httplib)
 
@@ -25,34 +23,39 @@ add_library(chalkboard STATIC
         src/publisher.cpp
         src/task.cpp
 )
-
 target_include_directories(chalkboard
         PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
 )
-
 target_link_libraries(chalkboard
         PUBLIC
         httplib::httplib
 )
-
-target_compile_features(chalkboard PUBLIC cxx_std_20)
-
+target_compile_features(chalkboard PUBLIC cxx_std_23)
 add_library(chalkboard::chalkboard ALIAS chalkboard)
 
-if(CHALKBOARD_BUILD_VIEWER)
+if (CHALKBOARD_BUILD_VIEWER)
     add_executable(chalkboard_viewer
             viewer/viewer.cpp
     )
-
     target_link_libraries(chalkboard_viewer
             PRIVATE
             httplib::httplib
     )
+    target_compile_features(chalkboard_viewer PRIVATE cxx_std_23)
+endif ()
 
-    target_compile_features(chalkboard_viewer PRIVATE cxx_std_20)
-endif()
+if (CHALKBOARD_BUILD_EXAMPLES)
+    add_executable(example_pythagorean examples/task1_pythagorean.cpp)
+    add_executable(example_euler examples/task2_euler.cpp)
+    add_executable(example_quadratic examples/task3_quadratic.cpp)
+
+    foreach (target IN ITEMS example_pythagorean example_euler example_quadratic)
+        target_link_libraries(${target} PRIVATE chalkboard::chalkboard)
+        target_compile_features(${target} PRIVATE cxx_std_23)
+    endforeach ()
+endif ()
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
@@ -61,29 +64,24 @@ install(TARGETS chalkboard
         EXPORT chalkboardTargets
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
-
 install(DIRECTORY include/
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
-
 install(EXPORT chalkboardTargets
         FILE chalkboardTargets.cmake
         NAMESPACE chalkboard::
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/chalkboard
 )
-
 write_basic_package_version_file(
         chalkboardConfigVersion.cmake
         VERSION ${PROJECT_VERSION}
         COMPATIBILITY SameMajorVersion
 )
-
 configure_package_config_file(
         ${CMAKE_CURRENT_SOURCE_DIR}/cmake/chalkboardConfig.cmake.in
         ${CMAKE_CURRENT_BINARY_DIR}/chalkboardConfig.cmake
         INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/chalkboard
 )
-
 install(FILES
         ${CMAKE_CURRENT_BINARY_DIR}/chalkboardConfig.cmake
         ${CMAKE_CURRENT_BINARY_DIR}/chalkboardConfigVersion.cmake
