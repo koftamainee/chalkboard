@@ -195,6 +195,14 @@ static std::string shell_html() {
     color: var(--muted);
   }
 
+  @media print {
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      #statusbar, #search-bar { display: none !important; }
+      #content { padding-top: 20px !important; max-width: 100%; }
+      .copy-latex-btn { display: none !important; }
+      @page { margin: 20mm; }
+    }
+
   #statusbar .dot {
     width: 7px; height: 7px;
     border-radius: 50%;
@@ -750,7 +758,7 @@ static std::string shell_html() {
 )";
 }
 
-int main(const int argc, char *argv[]) {
+int main(const int argc, char* argv[]) {
   if (argc != 2) {
     std::cerr << "Specify port in cli arguments.\n";
     return 1;
